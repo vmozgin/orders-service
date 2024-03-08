@@ -1,5 +1,6 @@
-package com.example.orderservice;
+package com.example.orderservice.config;
 
+import com.example.orderservice.config.KafkaInitializer;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import javax.annotation.Nonnull;
@@ -24,7 +25,8 @@ public class KafkaConsumerUtils {
 			@Nonnull final BlockingQueue<ConsumerRecord<String, OrderEvent>> consumerRecords,
 			String...topics) {
 		final var containerProperties = new ContainerProperties(topics);
-		final Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(KafkaInitializer.getBootstrapSevers(), "sender", "false");
+		final Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(
+				KafkaInitializer.getBootstrapSevers(), "sender", "false");
 		consumerProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT");
 		consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);

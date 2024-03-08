@@ -1,5 +1,7 @@
 package com.example.orderservice;
 
+import com.example.orderservice.config.KafkaConsumerUtils;
+import com.example.orderservice.config.KafkaInitializer;
 import com.example.orderservice.model.OrderRequest;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;

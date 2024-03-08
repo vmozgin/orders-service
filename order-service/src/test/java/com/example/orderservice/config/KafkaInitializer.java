@@ -1,4 +1,4 @@
-package com.example.orderservice;
+package com.example.orderservice.config;
 
 import javax.annotation.Nonnull;
 import org.springframework.boot.test.util.TestPropertyValues;
