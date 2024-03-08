@@ -1,69 +1,69 @@
 package com.example.orderservice;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
-
-
-import com.example.orderservice.controller.OrderController;
 import com.example.orderservice.model.OrderRequest;
-import java.time.Duration;
-import java.util.Collections;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import lombok.SneakyThrows;
 import order.OrderEvent;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer;
+import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
-/*@SpringBootTest
+@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ContextConfiguration(initializers = {KafkaInitializer.class})
 class OrderControllerTests {
 
-	@Container
-	static final KafkaContainer kafka = new KafkaContainer(
-			DockerImageName.parse("confluentinc/cp-kafka:7.3.3")
-	);
-
-	@DynamicPropertySource
-	static void registerKafkaProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-	}
+	private KafkaMessageListenerContainer<String, OrderEvent> container;
+	private final BlockingQueue<ConsumerRecord<String, OrderEvent>> consumerRecords = new LinkedBlockingQueue<>();
 
 	@Autowired
-	private OrderController orderController;
-	@Autowired
-	private ConsumerFactory<String, OrderEvent> consumerFactory;
+	private TestRestTemplate restTemplate;
 
 	@Value("${app.kafka.orderTopic}")
 	private String topicName;
 
+	@BeforeAll
+	void setUpKafkaConsumer() {
+		container = KafkaConsumerUtils.setUpKafkaConsumer(consumerRecords, topicName);
+	}
+
+	@AfterAll
+	void tearDownKafkaConsumer() {
+		if (container != null) {
+			container.stop();
+			container = null;
+		}
+	}
+
+	@SneakyThrows
 	@Test
 	public void whenOrderSend_thenMessageCorrectlyRecordedInOrderTopic() {
-		Consumer<String, OrderEvent> consumer = consumerFactory.createConsumer("test-group-id", null);
-		consumer.subscribe(Collections.singleton(topicName));
-
 		OrderRequest request = new OrderRequest();
 		request.setProduct("test_product");
 		request.setQuantity(1);
-		orderController.sendToKafka(request);
 
-		ConsumerRecords<String, OrderEvent> records = consumer.poll(Duration.ofSeconds(10));
+		ResponseEntity<Void> response = restTemplate.postForEntity("/api/order/send", request, Void.class);
+		Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
 
-		Assertions.assertThat(records).isNotEmpty();
-		ConsumerRecord<String, OrderEvent> record = records.iterator().next();
+		ConsumerRecord<String, OrderEvent> record = consumerRecords.poll(10, TimeUnit.SECONDS);
+
+		Assertions.assertThat(record).isNotNull();
 		Assertions.assertThat(record.value().getProduct()).isEqualTo(request.getProduct());
 		Assertions.assertThat(record.value().getQuantity()).isEqualTo(request.getQuantity());
 	}
-}*/
+}
